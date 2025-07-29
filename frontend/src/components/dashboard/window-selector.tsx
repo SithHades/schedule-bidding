@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarDays, Clock } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 interface ShiftWindow {
   id: number
@@ -26,21 +27,13 @@ export default function WindowSelector({ onWindowChange, selectedWindowId }: Win
   const [error, setError] = useState<string | null>(null)
 
   const fetchWindows = useCallback(async () => {
+    if (!session?.user.id) return
+    
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('http://localhost:3001/shift-windows', {
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch shift windows')
-      }
-
-      const data = await response.json()
+      const data = await apiWithAuth('/shift-windows', session.user.id)
       setWindows(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')

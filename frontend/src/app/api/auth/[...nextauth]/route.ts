@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { api } from "@/lib/api"
 
 const handler = NextAuth({
   providers: [
@@ -15,22 +16,13 @@ const handler = NextAuth({
         }
 
         try {
-          const response = await fetch("http://localhost:3001/api/auth/login", {
+          const user = await api("/api/auth/login", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
             }),
           })
-
-          if (!response.ok) {
-            return null
-          }
-
-          const user = await response.json()
           
           if (user && user.id) {
             return {

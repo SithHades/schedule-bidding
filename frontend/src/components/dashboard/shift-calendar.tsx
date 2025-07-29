@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Pin, Users, TrendingUp } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 interface Shift {
   id: number
@@ -34,24 +35,13 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
   const estimatedQuota = Math.round((session?.user.contractPercentage || 100) / 100 * 5) // 5 days per week
 
   const fetchShifts = useCallback(async () => {
+    if (!session?.user.id) return
+    
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(
-        `http://localhost:3001/shifts?windowId=${activeWindowId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session?.user.id}`, // You might need to adjust this based on your auth setup
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch shifts')
-      }
-
-      const data = await response.json()
+      const data = await apiWithAuth(`/shifts?windowId=${activeWindowId}`, session.user.id)
       setShifts(data)
       
       // Count pinned shifts
@@ -74,34 +64,18 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
     try {
       if (shift.isPinnedByUser) {
         // Unpin shift
-        const response = await fetch(`http://localhost:3001/pins/${shift.id}`, {
+        await apiWithAuth(`/pins/${shift.id}`, session.user.id, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${session.user.id}`,
-            'Content-Type': 'application/json',
-          },
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to unpin shift')
-        }
       } else {
         // Pin shift
-        const response = await fetch('http://localhost:3001/pins', {
+        await apiWithAuth('/pins', session.user.id, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.user.id}`,
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             userId: session.user.id,
             shiftId: shift.id,
           }),
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to pin shift')
-        }
       }
 
       // Refresh shifts after pin/unpin

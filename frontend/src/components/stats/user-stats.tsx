@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BarChart3, TrendingUp, Calendar, Target, Award, RefreshCw } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 interface UserStatsData {
   totalPinnedShifts: number
@@ -34,17 +35,7 @@ export default function UserStats() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`http://localhost:3001/user-stats/${session.user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${session.user.id}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user statistics')
-      }
-
-      const data = await response.json()
+      const data = await apiWithAuth(`/user-stats/${session.user.id}`, session.user.id)
       setStats(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')

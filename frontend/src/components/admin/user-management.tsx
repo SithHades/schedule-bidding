@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Users, Edit, Save, X } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 interface User {
   id: number
@@ -27,21 +28,13 @@ export default function UserManagement() {
   const [editForm, setEditForm] = useState({ role: "", contractPercentage: "" })
 
   const fetchUsers = useCallback(async () => {
+    if (!session?.user.id) return
+    
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch("http://localhost:3001/users", {
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch users')
-      }
-
-      const data = await response.json()
+      const data = await apiWithAuth("/users", session.user.id)
       setUsers(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -68,22 +61,16 @@ export default function UserManagement() {
   }
 
   const saveUser = async (userId: number) => {
+    if (!session?.user.id) return
+    
     try {
-      const response = await fetch(`http://localhost:3001/users/${userId}`, {
+      await apiWithAuth(`/users/${userId}`, session.user.id, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           role: editForm.role,
           contractPercentage: parseInt(editForm.contractPercentage)
         }),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update user')
-      }
 
       // Refresh users list
       await fetchUsers()

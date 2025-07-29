@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { BarChart3, Edit, Save, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 interface ShiftStat {
   id: number
@@ -33,21 +34,13 @@ export default function ShiftStats() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const fetchShiftStats = useCallback(async () => {
+    if (!session?.user.id) return
+    
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch("http://localhost:3001/shift-stats", {
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch shift statistics')
-      }
-
-      const data = await response.json()
+      const data = await apiWithAuth("/shift-stats", session.user.id)
       setShifts(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -94,21 +87,15 @@ export default function ShiftStats() {
   }
 
   const saveWeight = async (shiftId: number) => {
+    if (!session?.user.id) return
+    
     try {
-      const response = await fetch(`http://localhost:3001/shifts/${shiftId}/weight`, {
+      await apiWithAuth(`/shifts/${shiftId}/weight`, session.user.id, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           weight: parseFloat(editWeight)
         }),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update shift weight')
-      }
 
       // Refresh shift stats
       await fetchShiftStats()

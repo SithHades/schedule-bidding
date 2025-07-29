@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CalendarDays, Plus, Loader2 } from "lucide-react"
+import { apiWithAuth } from "@/lib/api"
 
 export default function ShiftWindowCreator() {
   const { data: session } = useSession()
@@ -78,7 +79,7 @@ export default function ShiftWindowCreator() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    if (!validateForm() || !session?.user.id) return
 
     setLoading(true)
     setError(null)
@@ -87,25 +88,14 @@ export default function ShiftWindowCreator() {
     try {
       const windowName = formData.name || generateWindowName(formData.startDate, formData.endDate)
 
-      const response = await fetch("http://localhost:3001/shift-windows", {
+      const result = await apiWithAuth("/shift-windows", session.user.id, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.user.id}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           name: windowName,
           startDate: formData.startDate,
           endDate: formData.endDate,
         }),
       })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to create shift window')
-      }
-
-      const result = await response.json()
       
       setSuccess(`Successfully created "${windowName}" with ${result.shiftsCreated || 'multiple'} shifts`)
       setFormData({ name: "", startDate: "", endDate: "" })

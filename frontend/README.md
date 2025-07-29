@@ -19,6 +19,7 @@ This is a Next.js application with NextAuth.js for authentication, Shadcn UI for
 - ✅ Shift popularity analytics with inline editing
 - ✅ Automated shift window creation
 - ✅ Personal statistics dashboard with charts and analytics
+- ✅ Centralized API helper for backend communication
 
 ## Setup
 
@@ -29,14 +30,12 @@ Create a `.env.local` file in the frontend directory with the following variable
 ```env
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key-here-change-in-production
-API_BASE_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-**Important:** Replace `your-secret-key-here-change-in-production` with a strong, random secret key. You can generate one using:
-
-```bash
-openssl rand -base64 32
-```
+**Important:** 
+- Replace `your-secret-key-here-change-in-production` with a strong, random secret key. Generate one using: `openssl rand -base64 32`
+- The `NEXT_PUBLIC_API_URL` is used by the centralized API helper to communicate with your backend
 
 ### 2. Install Dependencies
 
@@ -44,13 +43,59 @@ openssl rand -base64 32
 npm install
 ```
 
-### 3. Start the Development Server
+### 3. Development Commands
+
+**Important:** Run development commands from the project root directory:
 
 ```bash
-npm run dev
+# Start the backend server
+cd backend && npm run dev
+
+# In a separate terminal, start the frontend
+cd frontend && npm run dev
 ```
 
-The application will be available at `http://localhost:3000`.
+The application will be available at `http://localhost:3000` and will communicate with the backend at `http://localhost:3001`.
+
+## API Helper System
+
+### Centralized API Communication
+
+All API calls use a centralized helper located in `src/lib/api.ts`:
+
+```typescript
+// Basic API call
+export async function api(path: string, options: RequestInit = {})
+
+// Authenticated API call (includes Authorization header)
+export async function apiWithAuth(path: string, userId: string, options: RequestInit = {})
+```
+
+### Benefits
+
+- **Consistent error handling** across all API calls
+- **Automatic Content-Type headers** for JSON requests
+- **Centralized configuration** using environment variables
+- **Authentication helper** that automatically includes Authorization headers
+- **Credentials support** for cookie-based authentication
+
+### Usage Examples
+
+```typescript
+import { api, apiWithAuth } from "@/lib/api"
+
+// Public endpoint
+const data = await api("/public-endpoint")
+
+// Authenticated endpoint
+const userData = await apiWithAuth("/user-data", userId)
+
+// POST request with data
+const result = await apiWithAuth("/create-item", userId, {
+  method: "POST",
+  body: JSON.stringify({ name: "Item Name" })
+})
+```
 
 ## Authentication Flow
 
@@ -104,7 +149,7 @@ The middleware protects the following routes:
 - **Performance Insights** - Suggestions based on your selection patterns
 
 ### Visual Analytics
-- **Weekday Distribution Chart** - Bar chart showing shifts pinned by day (Mon-Fri)
+- **Weekday Distribution Chart** - Bar chart showing pinned shifts by day (Mon-Fri)
 - **Weekly Trend Analysis** - Track shifts pinned over time with trend indicators
 - **Color-coded Performance** - Green/red indicators for above/below average performance
 
@@ -165,7 +210,36 @@ The middleware protects the following routes:
 
 ## API Integration
 
-The frontend expects your backend to have the following endpoints:
+The frontend uses the centralized API helper to communicate with your backend at the configured `NEXT_PUBLIC_API_URL`. All requests include proper headers and error handling.
+
+### Required Backend Endpoints
+
+#### Authentication
+- **POST** `/api/auth/login` - User authentication
+
+#### User Statistics
+- **GET** `/user-stats/{userId}` - Personal statistics and analytics
+
+#### User Management (Admin Only)
+- **GET** `/users` - List all users
+- **PATCH** `/users/{id}` - Update user role/contract percentage
+
+#### Shift Management
+- **GET** `/shifts?windowId={windowId}` - Get shifts for window
+- **POST** `/pins` - Pin a shift
+- **DELETE** `/pins/{shiftId}` - Unpin a shift
+
+#### Shift Analytics (Admin Only)
+- **GET** `/shift-stats` - Get shift popularity statistics
+- **PATCH** `/shifts/{id}/weight` - Update shift weight
+
+#### Shift Windows
+- **GET** `/shift-windows` - List shift windows
+- **POST** `/shift-windows` - Create new window (Admin only)
+
+For detailed request/response formats, see the API Integration section below.
+
+## API Request/Response Formats
 
 ### Authentication
 #### POST `/api/auth/login`
@@ -422,10 +496,44 @@ src/
 │   ├── providers/
 │   │   └── auth-provider.tsx  # NextAuth SessionProvider wrapper
 │   └── ui/                    # Shadcn UI components
+├── lib/
+│   └── api.ts                 # Centralized API helper functions
 ├── middleware.ts              # Route protection middleware
 └── types/
     └── next-auth.d.ts        # NextAuth type extensions
 ```
+
+## Development Workflow
+
+### Starting the Application
+
+1. **Start Backend** (from project root):
+   ```bash
+   cd backend && npm run dev
+   ```
+
+2. **Start Frontend** (from project root, in a new terminal):
+   ```bash
+   cd frontend && npm run dev
+   ```
+
+3. **Access Application**:
+   - Frontend: `http://localhost:3000`
+   - Backend API: `http://localhost:3001`
+
+### Making API Changes
+
+When your backend API changes:
+
+1. Update the API endpoints in your backend
+2. The frontend will automatically use the new endpoints through the centralized API helper
+3. No changes needed in individual components unless the request/response format changes
+
+### Environment Configuration
+
+- **Development**: Uses `NEXT_PUBLIC_API_URL=http://localhost:3001`
+- **Production**: Set `NEXT_PUBLIC_API_URL` to your production backend URL
+- **Testing**: Configure separate API URL for testing environment
 
 ## Customization
 
@@ -464,6 +572,22 @@ const navigation = [
     show: true // or condition based on role
   }
 ]
+```
+
+### Extending the API Helper
+
+To add new API functionality, extend `src/lib/api.ts`:
+
+```typescript
+// Add a new specialized helper
+export async function apiWithPagination(
+  path: string, 
+  userId: string, 
+  page: number = 1, 
+  limit: number = 10
+) {
+  return apiWithAuth(`${path}?page=${page}&limit=${limit}`, userId)
+}
 ```
 
 ### Customizing Statistics Dashboard
@@ -518,7 +642,7 @@ The application uses Tailwind CSS with Shadcn UI components. You can customize t
 
 - The application uses Next.js 14 with App Router
 - TypeScript is configured with strict type checking
-- All API calls should be made to the backend at `http://localhost:3001`
+- All API calls use the centralized helper in `src/lib/api.ts`
 - Session data is stored in JWT tokens and persists across page reloads
 - The middleware handles all route protection and role-based redirects
 - Shift data is fetched in real-time and updated when pins change
@@ -530,9 +654,24 @@ The application uses Tailwind CSS with Shadcn UI components. You can customize t
 
 ### Authentication Not Working
 
-1. Check that your backend is running on `http://localhost:3001`
+1. Check that your backend is running on the configured API URL
 2. Verify the `.env.local` file exists and has correct values
 3. Ensure your backend login endpoint returns the expected user object format
+4. Check the browser network tab for CORS issues
+
+### API Helper Issues
+
+1. Verify `NEXT_PUBLIC_API_URL` is set correctly in `.env.local`
+2. Check that the backend is accessible at the configured URL
+3. Ensure proper CORS configuration on your backend
+4. Check browser console for API error messages
+
+### Environment Variable Problems
+
+1. Ensure `.env.local` file is in the `frontend` directory (not project root)
+2. Restart the development server after changing environment variables
+3. Verify variable names start with `NEXT_PUBLIC_` for client-side access
+4. Check that variables are properly loaded using `console.log(process.env.NEXT_PUBLIC_API_URL)`
 
 ### Statistics Page Not Loading
 
