@@ -35,7 +35,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
     },
     {
       name: "My Stats",
-      href: "/dashboard/stats",
+      href: "/stats",
       icon: BarChart3,
       show: true
     },
