@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useSession } from "next-auth/react"
+import AuthGuard from "@/components/auth/auth-guard"
 import SidebarLayout from "@/components/layout/sidebar-layout"
 import ShiftCalendar from "@/components/dashboard/shift-calendar"
 import WindowSelector from "@/components/dashboard/window-selector"
@@ -12,20 +13,17 @@ export default function Dashboard() {
   const { data: session } = useSession()
   const [selectedWindowId, setSelectedWindowId] = useState(1)
 
-  if (!session) {
-    return <div>Loading...</div>
-  }
-
   const handleWindowChange = (windowId: number) => {
     setSelectedWindowId(windowId)
   }
 
   return (
+    <AuthGuard>
     <SidebarLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {session.user.name}!
+            Welcome back, {session!.user.name}!
           </h1>
         </div>
 
@@ -36,9 +34,9 @@ export default function Dashboard() {
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{session.user.name}</div>
+              <div className="text-2xl font-bold">{session!.user.name}</div>
               <p className="text-xs text-muted-foreground">
-                {session.user.email}
+                {session!.user.email}
               </p>
             </CardContent>
           </Card>
@@ -49,7 +47,7 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{session.user.contractPercentage}%</div>
+              <div className="text-2xl font-bold">{session!.user.contractPercentage}%</div>
               <p className="text-xs text-muted-foreground">
                 Current contract percentage
               </p>
@@ -62,7 +60,7 @@ export default function Dashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{session.user.role}</div>
+              <div className="text-2xl font-bold capitalize">{session!.user.role}</div>
               <p className="text-xs text-muted-foreground">
                 Your access level
               </p>
@@ -103,5 +101,6 @@ export default function Dashboard() {
         <ShiftCalendar activeWindowId={selectedWindowId} />
       </div>
     </SidebarLayout>
+    </AuthGuard>
   )
 } 

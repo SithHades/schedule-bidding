@@ -5,8 +5,9 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Calendar, Pin, Users, TrendingUp } from "lucide-react"
-import { apiWithAuth } from "@/lib/api"
+import { useAuthenticatedApi, useTogglePin } from "@/hooks/use-api"
 
 interface Shift {
   id: number
@@ -25,9 +26,9 @@ interface ShiftCalendarProps {
 export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps) {
   const { data: session } = useSession()
   const [shifts, setShifts] = useState<Shift[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [pinnedCount, setPinnedCount] = useState(0)
+  const { executeWithAuth, loading, error } = useAuthenticatedApi()
+  const { togglePin, loading: pinLoading } = useTogglePin()
 
   const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
@@ -38,50 +39,31 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
     if (!session?.user.id) return
     
     try {
-      setLoading(true)
-      setError(null)
-
-      const data = await apiWithAuth(`/shifts?windowId=${activeWindowId}`, session.user.id)
-      setShifts(data)
-      
-      // Count pinned shifts
-      const pinned = data.filter((shift: Shift) => shift.isPinnedByUser).length
-      setPinnedCount(pinned)
+      const data = await executeWithAuth(`/shifts?windowId=${activeWindowId}`, {}, {
+        showErrorToast: true,
+        onSuccess: (data) => {
+          setShifts(data)
+          // Count pinned shifts
+          const pinned = data.filter((shift: Shift) => shift.isPinnedByUser).length
+          setPinnedCount(pinned)
+        }
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
+      // Error handling is done by the hook
     }
-  }, [activeWindowId, session?.user.id])
+  }, [activeWindowId, executeWithAuth, session?.user.id])
 
   useEffect(() => {
     fetchShifts()
   }, [fetchShifts])
 
   const handlePinToggle = async (shift: Shift) => {
-    if (!session?.user.id) return
-
     try {
-      if (shift.isPinnedByUser) {
-        // Unpin shift
-        await apiWithAuth(`/pins/${shift.id}`, session.user.id, {
-          method: 'DELETE',
-        })
-      } else {
-        // Pin shift
-        await apiWithAuth('/pins', session.user.id, {
-          method: 'POST',
-          body: JSON.stringify({
-            userId: session.user.id,
-            shiftId: shift.id,
-          }),
-        })
-      }
-
+      await togglePin(shift)
       // Refresh shifts after pin/unpin
       await fetchShifts()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      // Error handling is done by the hook
     }
   }
 
@@ -107,7 +89,7 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <LoadingSpinner size="lg" />
           </div>
         </CardContent>
       </Card>
@@ -176,7 +158,7 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
               return (
                 <div key={`early-${dayIndex}`} className="p-2">
                   {shift ? (
-                    <ShiftCard shift={shift} onPinToggle={handlePinToggle} />
+                    <ShiftCard shift={shift} onPinToggle={handlePinToggle} loading={pinLoading} />
                   ) : (
                     <div className="h-24 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
                       No shift
@@ -195,7 +177,7 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
               return (
                 <div key={`late-${dayIndex}`} className="p-2">
                   {shift ? (
-                    <ShiftCard shift={shift} onPinToggle={handlePinToggle} />
+                    <ShiftCard shift={shift} onPinToggle={handlePinToggle} loading={pinLoading} />
                   ) : (
                     <div className="h-24 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
                       No shift
@@ -214,9 +196,10 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
 interface ShiftCardProps {
   shift: Shift
   onPinToggle: (shift: Shift) => void
+  loading?: boolean
 }
 
-function ShiftCard({ shift, onPinToggle }: ShiftCardProps) {
+function ShiftCard({ shift, onPinToggle, loading = false }: ShiftCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -225,38 +208,45 @@ function ShiftCard({ shift, onPinToggle }: ShiftCardProps) {
   return (
     <div
       className={`
-        h-24 border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-md
+        h-24 border-2 rounded-lg p-2 transition-all hover:shadow-md relative
         ${shift.isPinnedByUser 
           ? 'border-blue-500 bg-blue-50 shadow-sm' 
           : 'border-gray-200 bg-white hover:border-gray-300'
         }
+        ${loading ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}
       `}
-      onClick={() => onPinToggle(shift)}
-    >
-      <div className="h-full flex flex-col justify-between">
-        <div>
-          <div className="text-xs font-medium text-gray-900">
-            {formatDate(shift.date)}
+      onClick={() => !loading && onPinToggle(shift)}
+          >
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg">
+            <LoadingSpinner size="sm" />
           </div>
-          <div className="text-xs text-gray-600">
-            {shift.startTime} - {shift.endTime}
-          </div>
-        </div>
+        )}
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-1">
-            <Users className="h-3 w-3 text-gray-400" />
-            <span className="text-xs text-gray-600">{shift.pinCount}</span>
+        <div className="h-full flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-medium text-gray-900">
+              {formatDate(shift.date)}
+            </div>
+            <div className="text-xs text-gray-600">
+              {shift.startTime} - {shift.endTime}
+            </div>
           </div>
           
-          {shift.isPinnedByUser && (
-            <Badge variant="secondary" className="text-xs">
-              <Pin className="h-3 w-3 mr-1" />
-              Pinned
-            </Badge>
-          )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1">
+              <Users className="h-3 w-3 text-gray-400" />
+              <span className="text-xs text-gray-600">{shift.pinCount}</span>
+            </div>
+            
+            {shift.isPinnedByUser && (
+              <Badge variant="secondary" className="text-xs">
+                <Pin className="h-3 w-3 mr-1" />
+                Pinned
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
-    </div>
   )
 } 

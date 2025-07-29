@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import LoadingSpinner, { LoadingButton } from "@/components/ui/loading-spinner"
 import { Users, Edit, Save, X } from "lucide-react"
-import { apiWithAuth } from "@/lib/api"
+import { useAuthenticatedApi, useUpdateUser } from "@/hooks/use-api"
 
 interface User {
   id: number
@@ -22,26 +23,23 @@ interface User {
 export default function UserManagement() {
   const { data: session } = useSession()
   const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ role: "", contractPercentage: "" })
+  const { executeWithAuth, loading, error } = useAuthenticatedApi()
+  const { updateUser, loading: updateLoading } = useUpdateUser()
 
   const fetchUsers = useCallback(async () => {
     if (!session?.user.id) return
     
     try {
-      setLoading(true)
-      setError(null)
-
-      const data = await apiWithAuth("/users", session.user.id)
-      setUsers(data)
+      await executeWithAuth("/users", {}, {
+        showErrorToast: true,
+        onSuccess: (data) => setUsers(data)
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
+      // Error handling is done by the hook
     }
-  }, [session?.user.id])
+  }, [executeWithAuth, session?.user.id])
 
   useEffect(() => {
     fetchUsers()
@@ -61,15 +59,10 @@ export default function UserManagement() {
   }
 
   const saveUser = async (userId: number) => {
-    if (!session?.user.id) return
-    
     try {
-      await apiWithAuth(`/users/${userId}`, session.user.id, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          role: editForm.role,
-          contractPercentage: parseInt(editForm.contractPercentage)
-        }),
+      await updateUser(userId, {
+        role: editForm.role,
+        contractPercentage: parseInt(editForm.contractPercentage)
       })
 
       // Refresh users list
@@ -77,7 +70,7 @@ export default function UserManagement() {
       setEditingUser(null)
       setEditForm({ role: "", contractPercentage: "" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user')
+      // Error handling is done by the hook
     }
   }
 
@@ -96,7 +89,7 @@ export default function UserManagement() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <LoadingSpinner size="lg" />
           </div>
         </CardContent>
       </Card>
@@ -186,17 +179,20 @@ export default function UserManagement() {
                   <TableCell>
                     {editingUser === user.id ? (
                       <div className="flex space-x-2">
-                        <Button
+                        <LoadingButton
                           size="sm"
                           onClick={() => saveUser(user.id)}
                           disabled={!editForm.role || !editForm.contractPercentage}
+                          loading={updateLoading}
+                          className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
                         >
                           <Save className="h-4 w-4" />
-                        </Button>
+                        </LoadingButton>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={cancelEditing}
+                          disabled={updateLoading}
                         >
                           <X className="h-4 w-4" />
                         </Button>
