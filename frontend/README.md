@@ -11,6 +11,10 @@ This is a Next.js application with NextAuth.js for authentication, Shadcn UI for
 - ✅ Auth state persistence across page reloads
 - ✅ Protected routes with middleware
 - ✅ Beautiful UI with Shadcn components
+- ✅ Shift Calendar with weekly grid view
+- ✅ Pin/Unpin shift functionality
+- ✅ Shift window selection
+- ✅ Real-time shift data and pin counts
 
 ## Setup
 
@@ -64,9 +68,10 @@ The middleware protects the following routes:
 ### Role-Based Features
 
 #### User Role
-- Access to `/dashboard` - Personal dashboard
+- Access to `/dashboard` - Personal dashboard with shift calendar
 - Access to `/dashboard/stats` - Personal statistics
 - View profile information and contract percentage
+- Pin/unpin shifts for bidding
 - Basic navigation sidebar
 
 #### Admin Role
@@ -76,43 +81,37 @@ The middleware protects the following routes:
 - User management interface
 - System statistics and controls
 
-## File Structure
+## Shift Calendar Features
 
-```
-src/
-├── app/
-│   ├── admin/
-│   │   └── page.tsx          # Admin panel
-│   ├── auth/
-│   │   └── signin/
-│   │       └── page.tsx      # Sign-in page
-│   ├── dashboard/
-│   │   ├── page.tsx          # User dashboard
-│   │   └── stats/
-│   │       └── page.tsx      # User statistics
-│   ├── api/
-│   │   └── auth/
-│   │       └── [...nextauth]/
-│   │           └── route.ts  # NextAuth configuration
-│   ├── layout.tsx            # Root layout with AuthProvider
-│   └── page.tsx              # Home page with redirects
-├── components/
-│   ├── layout/
-│   │   └── sidebar-layout.tsx # Sidebar layout component
-│   ├── providers/
-│   │   └── auth-provider.tsx  # NextAuth SessionProvider wrapper
-│   └── ui/                    # Shadcn UI components
-├── middleware.ts              # Route protection middleware
-└── types/
-    └── next-auth.d.ts        # NextAuth type extensions
-```
+### Weekly Calendar Grid
+- **Monday–Friday view** with early/late shifts per day
+- **Visual shift cards** showing date, time, and pin count
+- **Highlighted pinned shifts** with blue border and badge
+- **Responsive design** that works on all screen sizes
+
+### Shift Bidding
+- **Click to pin/unpin** shifts directly from the calendar
+- **Real-time updates** of pin counts
+- **User-specific highlighting** for pinned shifts
+- **Summary display** showing total pinned shifts
+
+### Window Selection
+- **Dropdown selector** for different shift bidding windows
+- **Status indicators** (active, upcoming, closed)
+- **Date range display** for selected window
+- **Real-time window data** from backend
+
+### Quota Calculation
+- **Automatic calculation** based on contract percentage
+- **Visual display** of estimated shift quota
+- **Contract percentage integration** from user profile
 
 ## API Integration
 
-The frontend expects your backend to have the following endpoint:
+The frontend expects your backend to have the following endpoints:
 
-### POST `/api/auth/login`
-
+### Authentication
+#### POST `/api/auth/login`
 **Request:**
 ```json
 {
@@ -132,11 +131,101 @@ The frontend expects your backend to have the following endpoint:
 }
 ```
 
-**Response on failure:**
+### Shift Management
+#### GET `/shifts?windowId={windowId}`
+**Headers:**
+```
+Authorization: Bearer {userId}
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "date": "2024-01-15",
+    "type": "early",
+    "startTime": "08:00",
+    "endTime": "16:00",
+    "pinCount": 5,
+    "isPinnedByUser": true
+  }
+]
+```
+
+#### POST `/pins`
+**Headers:**
+```
+Authorization: Bearer {userId}
+Content-Type: application/json
+```
+
+**Request:**
 ```json
 {
-  "error": "Invalid credentials"
+  "userId": 1,
+  "shiftId": 123
 }
+```
+
+#### DELETE `/pins/{shiftId}`
+**Headers:**
+```
+Authorization: Bearer {userId}
+```
+
+### Shift Windows
+#### GET `/shift-windows`
+**Headers:**
+```
+Authorization: Bearer {userId}
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "January 2024 Bidding",
+    "startDate": "2024-01-01",
+    "endDate": "2024-01-31",
+    "status": "active"
+  }
+]
+```
+
+## File Structure
+
+```
+src/
+├── app/
+│   ├── admin/
+│   │   └── page.tsx          # Admin panel
+│   ├── auth/
+│   │   └── signin/
+│   │       └── page.tsx      # Sign-in page
+│   ├── dashboard/
+│   │   ├── page.tsx          # User dashboard with shift calendar
+│   │   └── stats/
+│   │       └── page.tsx      # User statistics
+│   ├── api/
+│   │   └── auth/
+│   │       └── [...nextauth]/
+│   │           └── route.ts  # NextAuth configuration
+│   ├── layout.tsx            # Root layout with AuthProvider
+│   └── page.tsx              # Home page with redirects
+├── components/
+│   ├── dashboard/
+│   │   ├── shift-calendar.tsx # Weekly shift calendar component
+│   │   └── window-selector.tsx # Shift window selector
+│   ├── layout/
+│   │   └── sidebar-layout.tsx # Sidebar layout component
+│   ├── providers/
+│   │   └── auth-provider.tsx  # NextAuth SessionProvider wrapper
+│   └── ui/                    # Shadcn UI components
+├── middleware.ts              # Route protection middleware
+└── types/
+    └── next-auth.d.ts        # NextAuth type extensions
 ```
 
 ## Customization
@@ -177,6 +266,14 @@ const navigation = [
 ]
 ```
 
+### Customizing Shift Calendar
+
+The shift calendar can be customized by:
+- Modifying the `getShiftForDayAndType` function for different date grouping
+- Updating the `ShiftCard` component for different visual styles
+- Adjusting the `estimatedQuota` calculation logic
+- Adding new shift types beyond "early" and "late"
+
 ### Styling
 
 The application uses Tailwind CSS with Shadcn UI components. You can customize the theme by modifying:
@@ -190,6 +287,8 @@ The application uses Tailwind CSS with Shadcn UI components. You can customize t
 - All API calls should be made to the backend at `http://localhost:3001`
 - Session data is stored in JWT tokens and persists across page reloads
 - The middleware handles all route protection and role-based redirects
+- Shift data is fetched in real-time and updated when pins change
+- The calendar component uses responsive design principles
 
 ## Troubleshooting
 
@@ -198,6 +297,26 @@ The application uses Tailwind CSS with Shadcn UI components. You can customize t
 1. Check that your backend is running on `http://localhost:3001`
 2. Verify the `.env.local` file exists and has correct values
 3. Ensure your backend login endpoint returns the expected user object format
+
+### Shift Calendar Not Loading
+
+1. Verify your backend has the `/shifts` endpoint implemented
+2. Check that the shift data format matches the expected interface
+3. Ensure the Authorization header is correctly formatted
+4. Check browser network tab for API response errors
+
+### Pin/Unpin Not Working
+
+1. Verify the `/pins` POST and DELETE endpoints are implemented
+2. Check that the user ID is correctly passed in requests
+3. Ensure proper authorization headers are sent
+4. Verify the backend returns appropriate status codes
+
+### Window Selector Issues
+
+1. Check that the `/shift-windows` endpoint is available
+2. Verify the window data format matches the expected interface
+3. Ensure proper error handling for unavailable windows
 
 ### TypeScript Errors
 

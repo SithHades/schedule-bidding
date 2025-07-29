@@ -1,0 +1,167 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarDays, Clock } from "lucide-react"
+
+interface ShiftWindow {
+  id: number
+  name: string
+  startDate: string
+  endDate: string
+  status: "active" | "upcoming" | "closed"
+}
+
+interface WindowSelectorProps {
+  onWindowChange: (windowId: number) => void
+  selectedWindowId: number
+}
+
+export default function WindowSelector({ onWindowChange, selectedWindowId }: WindowSelectorProps) {
+  const { data: session } = useSession()
+  const [windows, setWindows] = useState<ShiftWindow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchWindows = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch('http://localhost:3001/shift-windows', {
+        headers: {
+          'Authorization': `Bearer ${session?.user.id}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch shift windows')
+      }
+
+      const data = await response.json()
+      setWindows(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }, [session?.user.id])
+
+  useEffect(() => {
+    fetchWindows()
+  }, [fetchWindows])
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'text-green-600 bg-green-50'
+      case 'upcoming':
+        return 'text-blue-600 bg-blue-50'
+      case 'closed':
+        return 'text-gray-600 bg-gray-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
+    }
+  }
+
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    })
+    const end = new Date(endDate).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    })
+    return `${start} - ${end}`
+  }
+
+  const selectedWindow = windows.find(w => w.id === selectedWindowId)
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CalendarDays className="h-5 w-5" />
+            <span>Shift Window</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse h-10 bg-gray-200 rounded"></div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CalendarDays className="h-5 w-5" />
+            <span>Shift Window</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-red-600 py-4">
+            <p>Error loading windows: {error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <CalendarDays className="h-5 w-5" />
+          <span>Shift Window</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <label className="text-sm font-medium mb-2 block">Select Bidding Window</label>
+          <Select
+            value={selectedWindowId.toString()}
+            onValueChange={(value) => onWindowChange(parseInt(value))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a shift window" />
+            </SelectTrigger>
+            <SelectContent>
+              {windows.map((window) => (
+                <SelectItem key={window.id} value={window.id.toString()}>
+                  <div className="flex items-center space-x-2">
+                    <span>{window.name}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(window.status)}`}>
+                      {window.status}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedWindow && (
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <Clock className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm">{selectedWindow.name}</span>
+              <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(selectedWindow.status)}`}>
+                {selectedWindow.status}
+              </span>
+            </div>
+            <p className="text-xs text-gray-600">
+              {formatDateRange(selectedWindow.startDate, selectedWindow.endDate)}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+} 
