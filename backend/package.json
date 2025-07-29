@@ -1,0 +1,35 @@
+{
+  "name": "schedule-bidding-backend",
+  "version": "1.0.0",
+  "description": "Backend API for schedule bidding application",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:reset": "prisma migrate reset",
+    "prisma:seed": "node prisma/seed.js",
+    "db:setup": "npm run prisma:migrate && npm run prisma:seed"
+  },
+  "keywords": ["express", "prisma", "postgresql", "jwt", "api"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "prisma": "^5.7.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+} 
