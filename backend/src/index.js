@@ -7,6 +7,9 @@ const rateLimit = require('express-rate-limit');
 // Import routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const shiftRoutes = require('./routes/shiftRoutes');
+const shiftWindowRoutes = require('./routes/shiftWindowRoutes');
+const pinRoutes = require('./routes/pinRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +49,9 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/shift-windows', shiftWindowRoutes);
+app.use('/api/pins', pinRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

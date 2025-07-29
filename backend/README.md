@@ -66,6 +66,63 @@ A Node.js + Express backend API with PostgreSQL and Prisma ORM for managing user
    npm start
    ```
 
+## Database Schema
+
+### Updated Schema
+```prisma
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ShiftType {
+  EARLY
+  LATE
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  password        String
+  contractPercent Int      @default(100)
+  role            Role     @default(USER)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  pins            Pin[]
+}
+
+model ShiftWindow {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shifts    Shift[]
+}
+
+model Shift {
+  id            String     @id @default(cuid())
+  date          DateTime
+  type          ShiftType
+  shiftWindowId String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  shiftWindow   ShiftWindow @relation(fields: [shiftWindowId], references: [id], onDelete: Cascade)
+  pins          Pin[]
+}
+
+model Pin {
+  userId    String
+  shiftId   String
+  createdAt DateTime @default(now())
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift     Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  @@id([userId, shiftId])
+}
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -170,26 +227,195 @@ Authorization: Bearer <admin_jwt_token>
 }
 ```
 
-## Database Schema
+### Shift Management (Admin Only)
 
-### User Model
-```prisma
-model User {
-  id              String   @id @default(cuid())
-  name            String
-  email           String   @unique
-  password        String
-  contractPercent Int      @default(100)
-  role            Role     @default(USER)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
+All shift window and shift creation endpoints require admin authentication.
 
-enum Role {
-  USER
-  ADMIN
+#### POST `/api/shift-windows`
+Create a new shift window (admin only).
+
+**Headers:**
+```
+Authorization: Bearer <admin_jwt_token>
+```
+
+**Request:**
+```json
+{
+  "name": "August - September 2025",
+  "startDate": "2025-08-01T00:00:00.000Z",
+  "endDate": "2025-09-30T23:59:59.999Z"
 }
 ```
+
+#### GET `/api/shift-windows`
+List all shift windows (admin only).
+
+#### PATCH `/api/shift-windows/:id`
+Update a shift window (admin only).
+
+#### DELETE `/api/shift-windows/:id`
+Delete a shift window (admin only).
+
+#### POST `/api/shifts`
+Create a single shift (admin only).
+
+**Request:**
+```json
+{
+  "date": "2025-08-15T08:00:00.000Z",
+  "type": "EARLY",
+  "shiftWindowId": "window_id_here"
+}
+```
+
+#### POST `/api/shifts/bulk`
+Create multiple shifts at once (admin only).
+
+**Request:**
+```json
+{
+  "shifts": [
+    {
+      "date": "2025-08-15T08:00:00.000Z",
+      "type": "EARLY",
+      "shiftWindowId": "window_id_here"
+    },
+    {
+      "date": "2025-08-15T16:00:00.000Z",
+      "type": "LATE",
+      "shiftWindowId": "window_id_here"
+    }
+  ]
+}
+```
+
+### Shift Operations (Authenticated Users)
+
+#### GET `/api/shifts?windowId=xyz`
+List all shifts in a specific window.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Shifts retrieved successfully",
+  "shifts": [
+    {
+      "id": "shift_id",
+      "date": "2025-08-15T08:00:00.000Z",
+      "type": "EARLY",
+      "shiftWindowId": "window_id",
+      "shiftWindow": {
+        "id": "window_id",
+        "name": "August - September 2025",
+        "startDate": "2025-08-01T00:00:00.000Z",
+        "endDate": "2025-09-30T23:59:59.999Z"
+      },
+      "_count": {
+        "pins": 3
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+#### GET `/api/shift-stats`
+Get all shifts with pin statistics (admin only).
+
+### Pin Management (Authenticated Users)
+
+#### POST `/api/pins`
+Create a new pin (users can pin shifts they want).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
+```json
+{
+  "userId": "user_id_here",
+  "shiftId": "shift_id_here"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Pin created successfully",
+  "pin": {
+    "userId": "user_id",
+    "shiftId": "shift_id",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "user": {
+      "id": "user_id",
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    "shift": {
+      "id": "shift_id",
+      "date": "2025-08-15T08:00:00.000Z",
+      "type": "EARLY",
+      "shiftWindow": {
+        "id": "window_id",
+        "name": "August - September 2025"
+      }
+    }
+  }
+}
+```
+
+#### GET `/api/pins/:userId`
+Get all pins for a specific user.
+
+**Response:**
+```json
+{
+  "message": "User pins retrieved successfully",
+  "user": {
+    "id": "user_id",
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "data": [
+    {
+      "window": {
+        "id": "window_id",
+        "name": "August - September 2025",
+        "startDate": "2025-08-01T00:00:00.000Z",
+        "endDate": "2025-09-30T23:59:59.999Z"
+      },
+      "pins": [
+        {
+          "shiftId": "shift_id",
+          "date": "2025-08-15T08:00:00.000Z",
+          "type": "EARLY",
+          "createdAt": "2025-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "totalPins": 1
+}
+```
+
+## Business Rules
+
+### Pin Constraints
+1. **Unique Pins**: A user can only pin each shift once
+2. **Window Validation**: Shifts must be within their shift window's date range
+3. **Cascading Deletes**: Deleting a shift window removes all associated shifts and pins
+
+### Shift Type Enum
+- `EARLY` - Early shift (e.g., morning)
+- `LATE` - Late shift (e.g., evening)
 
 ## Admin Seeding
 
