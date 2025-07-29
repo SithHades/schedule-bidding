@@ -106,6 +106,7 @@ model Shift {
   id            String     @id @default(cuid())
   date          DateTime
   type          ShiftType
+  weight        Float?     @default(1.0)
   shiftWindowId String
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -325,6 +326,40 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
+#### PATCH `/api/shifts/:id/weight`
+Update the weight of a specific shift (admin only).
+
+**Headers:**
+```
+Authorization: Bearer <admin_jwt_token>
+```
+
+**Request:**
+```json
+{
+  "weight": 2.5
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Shift weight updated successfully",
+  "shift": {
+    "id": "shift_id",
+    "date": "2025-08-15T08:00:00.000Z",
+    "type": "EARLY",
+    "weight": 2.5,
+    "pinCount": 3,
+    "shiftWindow": {
+      "id": "window_id",
+      "name": "August - September 2025"
+    }
+  },
+  "previousWeight": 1.0
+}
+```
+
 #### GET `/api/shift-stats`
 Get all shifts with pin statistics (admin only).
 
@@ -406,6 +441,123 @@ Get all pins for a specific user.
 }
 ```
 
+### Analytics & Statistics
+
+#### GET `/api/user-stats/:userId`
+Get comprehensive statistics for a specific user (authenticated users).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "message": "User statistics retrieved successfully",
+  "user": {
+    "id": "user_id",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "contractPercent": 80
+  },
+  "statistics": {
+    "totalPins": 15,
+    "averageShiftWeight": 1.5,
+    "quotaSimulation": {
+      "contractPercent": 80,
+      "expectedShifts": 32,
+      "currentPins": 15,
+      "quotaStatus": "under",
+      "remainingNeeded": 17,
+      "overQuota": 0
+    },
+    "pinsByWindow": [
+      {
+        "windowId": "window_id",
+        "windowName": "August - September 2025",
+        "pins": 8,
+        "totalWeight": 12.0,
+        "averageWeight": 1.5
+      }
+    ]
+  }
+}
+```
+
+#### GET `/api/admin/dashboard`
+Get comprehensive admin dashboard data including shift popularity and user statistics (admin only).
+
+**Headers:**
+```
+Authorization: Bearer <admin_jwt_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Admin dashboard data retrieved successfully",
+  "summary": {
+    "totalShifts": 50,
+    "totalPins": 150,
+    "totalUsers": 20,
+    "averagePinsPerUser": 7.5,
+    "shiftsWithZeroPins": 5
+  },
+  "shiftPopularityHeatmap": [
+    {
+      "id": "shift_id",
+      "date": "2025-08-15T08:00:00.000Z",
+      "type": "EARLY",
+      "weight": 2.0,
+      "pinCount": 8,
+      "popularity": "high",
+      "shiftWindow": {
+        "id": "window_id",
+        "name": "August - September 2025"
+      }
+    }
+  ],
+  "shiftsWithZeroPins": [
+    {
+      "id": "shift_id_2",
+      "date": "2025-08-20T16:00:00.000Z",
+      "type": "LATE",
+      "weight": 1.0,
+      "pinCount": 0,
+      "popularity": "none"
+    }
+  ],
+  "windowStatistics": [
+    {
+      "window": {
+        "id": "window_id",
+        "name": "August - September 2025"
+      },
+      "totalShifts": 30,
+      "totalPins": 120,
+      "averagePinsPerShift": 4.0,
+      "shiftsWithNoPins": 2,
+      "mostPopularShift": {
+        "id": "shift_id",
+        "date": "2025-08-15T08:00:00.000Z",
+        "type": "EARLY",
+        "pinCount": 8
+      }
+    }
+  ],
+  "topUsers": [
+    {
+      "id": "user_id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "contractPercent": 100,
+      "pinCount": 25
+    }
+  ]
+}
+```
+
 ## Business Rules
 
 ### Pin Constraints
@@ -416,6 +568,19 @@ Get all pins for a specific user.
 ### Shift Type Enum
 - `EARLY` - Early shift (e.g., morning)
 - `LATE` - Late shift (e.g., evening)
+
+### Shift Weights
+- Default weight: `1.0` for all new shifts
+- Admins can manually adjust weights to reflect shift difficulty/desirability
+- Weights are used in user statistics for average shift weight calculations
+- Higher weights typically indicate more demanding/valuable shifts
+
+### Quota Simulation
+The user stats endpoint includes quota simulation based on:
+- User's `contractPercent` (e.g., 80% = part-time)
+- Assumed full-time equivalent of 40 shifts per period
+- Current pin count vs. expected pins
+- Status indicators: `met`, `under`, or `over`
 
 ## Admin Seeding
 

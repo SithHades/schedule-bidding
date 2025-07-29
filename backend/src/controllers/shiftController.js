@@ -311,9 +311,95 @@ const createBulkShifts = async (req, res) => {
   }
 };
 
+const updateShiftWeight = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { weight } = req.body;
+
+    // Validate weight
+    if (weight === undefined || weight === null) {
+      return res.status(400).json({ 
+        error: 'Weight is required.' 
+      });
+    }
+
+    if (typeof weight !== 'number' || weight < 0) {
+      return res.status(400).json({ 
+        error: 'Weight must be a non-negative number.' 
+      });
+    }
+
+    // Check if shift exists
+    const existingShift = await prisma.shift.findUnique({
+      where: { id },
+      include: {
+        shiftWindow: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        _count: {
+          select: {
+            pins: true
+          }
+        }
+      }
+    });
+
+    if (!existingShift) {
+      return res.status(404).json({ 
+        error: 'Shift not found.' 
+      });
+    }
+
+    // Update shift weight
+    const updatedShift = await prisma.shift.update({
+      where: { id },
+      data: { weight },
+      include: {
+        shiftWindow: {
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+          }
+        },
+        _count: {
+          select: {
+            pins: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      message: 'Shift weight updated successfully',
+      shift: {
+        id: updatedShift.id,
+        date: updatedShift.date,
+        type: updatedShift.type,
+        weight: updatedShift.weight,
+        pinCount: updatedShift._count.pins,
+        shiftWindow: updatedShift.shiftWindow,
+        createdAt: updatedShift.createdAt,
+        updatedAt: updatedShift.updatedAt,
+      },
+      previousWeight: existingShift.weight,
+    });
+  } catch (error) {
+    console.error('Update shift weight error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error while updating shift weight.' 
+    });
+  }
+};
+
 module.exports = {
   getShiftsByWindow,
   getShiftStats,
   createShift,
   createBulkShifts,
+  updateShiftWeight,
 }; 
