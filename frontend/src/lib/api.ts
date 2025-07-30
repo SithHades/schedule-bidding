@@ -1,7 +1,10 @@
 export async function api(path: string, options: RequestInit = {}) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
   
-  const res = await fetch(`${apiUrl}${path}`, {
+  // Ensure path starts with /api unless it already does
+  const fullPath = path.startsWith('/api') ? path : `/api${path}`
+  
+  const res = await fetch(`${apiUrl}${fullPath}`, {
     ...options,
     credentials: 'include',
     headers: {
