@@ -39,7 +39,7 @@ interface SignupResponse {
   token: string
 }
 
-export default function InviteSignupPage({ params }: { params: { token: string } }) {
+export default function InviteSignupPage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter()
   const { execute, loading } = useApi()
   
@@ -48,12 +48,29 @@ export default function InviteSignupPage({ params }: { params: { token: string }
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
+    const initializeParams = async () => {
+      try {
+        const resolvedParams = await params
+        setToken(resolvedParams.token)
+      } catch (error) {
+        console.error("Error resolving params:", error)
+        router.push("/auth/signin")
+      }
+    }
+    
+    initializeParams()
+  }, [params, router])
+
+  useEffect(() => {
+    if (!token) return
+
     const fetchInvite = async () => {
       try {
         setInviteLoading(true)
-        const response: InviteResponse = await api(`/invites/${params.token}`)
+        const response: InviteResponse = await api(`/invites/${token}`)
         setInvite(response.invite)
       } catch (error) {
         console.error("Error fetching invite:", error)
@@ -65,10 +82,15 @@ export default function InviteSignupPage({ params }: { params: { token: string }
     }
 
     fetchInvite()
-  }, [params.token, router])
+  }, [token, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!token) {
+      toast.error("Invalid invite token")
+      return
+    }
     
     if (!name || !password || !confirmPassword) {
       toast.error("All fields are required")
@@ -90,7 +112,7 @@ export default function InviteSignupPage({ params }: { params: { token: string }
         () => api("/invites/signup", {
           method: "POST",
           body: JSON.stringify({
-            token: params.token,
+            token,
             name,
             password
           })
@@ -110,7 +132,7 @@ export default function InviteSignupPage({ params }: { params: { token: string }
     }
   }
 
-  if (inviteLoading) {
+  if (inviteLoading || !token) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
