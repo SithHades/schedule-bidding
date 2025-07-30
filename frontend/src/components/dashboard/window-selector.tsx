@@ -33,14 +33,18 @@ export default function WindowSelector({ onWindowChange, selectedWindowId }: Win
       setLoading(true)
       setError(null)
 
-      const data = await apiWithAuth('/shift-windows', session.user.id)
+      if (!session?.user.accessToken) {
+        throw new Error('No access token available')
+      }
+
+      const data = await apiWithAuth('/shift-windows', session.user.accessToken)
       setWindows(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
-  }, [session?.user.id])
+  }, [session?.user.id, session?.user.accessToken])
 
   useEffect(() => {
     fetchWindows()

@@ -15,7 +15,7 @@ export async function api(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => 'Unknown error')
-    throw new Error(`API error: ${res.status} ${res.statusText} - ${errorText}`)
+    throw new Error(`API error: ${res.status} - ${errorText}`)
   }
 
   return res.json()
@@ -23,6 +23,10 @@ export async function api(path: string, options: RequestInit = {}) {
 
 // Helper for authenticated requests
 export async function apiWithAuth(path: string, token: string, options: RequestInit = {}) {
+  if (!token) {
+    throw new Error('No authentication token provided')
+  }
+  
   return api(path, {
     ...options,
     headers: {

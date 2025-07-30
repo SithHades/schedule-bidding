@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react"
-import { useSession } from "next-auth/react"
-import toast from "react-hot-toast"
-import { api, apiWithAuth } from "@/lib/api"
+import { useState, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
+import { api, apiWithAuth } from '@/lib/api'
+import toast from 'react-hot-toast'
 
 interface UseApiOptions {
   showSuccessToast?: boolean
@@ -67,7 +67,7 @@ export function useAuthenticatedApi() {
     apiOptions: UseApiOptions = {}
   ) => {
     if (!session?.user.accessToken) {
-      throw new Error("User not authenticated")
+      throw new Error("User not authenticated - please log in again")
     }
 
     return execute(
@@ -84,15 +84,13 @@ export function useTogglePin() {
   const { executeWithAuth, loading } = useAuthenticatedApi()
 
   const togglePin = useCallback(async (shift: { id: number, isPinnedByUser: boolean }) => {
-    const path = shift.isPinnedByUser ? `/pins/${shift.id}` : '/pins'
-    const method = shift.isPinnedByUser ? 'DELETE' : 'POST'
-    const body = shift.isPinnedByUser ? undefined : JSON.stringify({
-      shiftId: shift.id,
-    })
-
-    return executeWithAuth(path, { method, body }, {
+    const action = shift.isPinnedByUser ? 'unpin' : 'pin'
+    
+    return executeWithAuth(`/pins/${shift.id}/${action}`, {
+      method: 'POST'
+    }, {
       showSuccessToast: true,
-      successMessage: shift.isPinnedByUser ? "Shift unpinned" : "Shift pinned"
+      successMessage: `Shift ${action}ned successfully`
     })
   }, [executeWithAuth])
 
@@ -102,16 +100,13 @@ export function useTogglePin() {
 export function useUpdateUser() {
   const { executeWithAuth, loading } = useAuthenticatedApi()
 
-  const updateUser = useCallback(async (
-    userId: number, 
-    data: { role?: string; contractPercentage?: number }
-  ) => {
+  const updateUser = useCallback(async (userId: string, userData: any) => {
     return executeWithAuth(`/users/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
+      method: 'PUT',
+      body: JSON.stringify(userData)
     }, {
       showSuccessToast: true,
-      successMessage: "User updated successfully"
+      successMessage: 'User updated successfully'
     })
   }, [executeWithAuth])
 

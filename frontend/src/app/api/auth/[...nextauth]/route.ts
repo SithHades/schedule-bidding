@@ -24,14 +24,15 @@ const handler = NextAuth({
             }),
           })
           
-          if (response && response.user && response.user.id) {
+          // Backend returns: { message, user, token }
+          if (response && response.user && response.user.id && response.token) {
             return {
               id: response.user.id.toString(),
               email: response.user.email,
               name: response.user.name,
               role: response.user.role,
               contractPercentage: response.user.contractPercent,
-              accessToken: response.token
+              accessToken: response.token  // This is the JWT from backend
             }
           }
           
@@ -47,8 +48,8 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role
-        token.contractPercentage = user.contractPercentage
-        token.accessToken = user.accessToken
+        token.contractPercentage = user.contractPercentage  
+        token.accessToken = user.accessToken  // Store the JWT from backend
       }
       return token
     },
@@ -57,7 +58,7 @@ const handler = NextAuth({
         session.user.id = token.sub || ""
         session.user.role = (token.role as string) || ""
         session.user.contractPercentage = (token.contractPercentage as number) || 0
-        session.user.accessToken = (token.accessToken as string) || ""
+        session.user.accessToken = (token.accessToken as string) || ""  // Include JWT in session
       }
       return session
     },
