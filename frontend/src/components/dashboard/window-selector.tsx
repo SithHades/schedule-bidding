@@ -17,7 +17,7 @@ interface ShiftWindow {
 
 interface WindowSelectorProps {
   onWindowChange: (windowId: number) => void
-  selectedWindowId: number
+  selectedWindowId: number | null
 }
 
 export default function WindowSelector({ onWindowChange, selectedWindowId }: WindowSelectorProps) {
@@ -37,14 +37,21 @@ export default function WindowSelector({ onWindowChange, selectedWindowId }: Win
         throw new Error('No access token available')
       }
 
-      const data = await apiWithAuth('/shift-windows', session.user.accessToken)
-      setWindows(data)
+      // Backend returns { message, shiftWindows, count }
+      const response = await apiWithAuth('/shift-windows', session.user.accessToken)
+      const windows = response.shiftWindows || []
+      setWindows(windows)
+      
+      // If no window is currently selected and we have windows, select the first one
+      if (!selectedWindowId && windows.length > 0) {
+        onWindowChange(windows[0].id)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
-  }, [session?.user.id, session?.user.accessToken])
+  }, [session?.user.id, session?.user.accessToken, selectedWindowId, onWindowChange])
 
   useEffect(() => {
     fetchWindows()
@@ -103,8 +110,28 @@ export default function WindowSelector({ onWindowChange, selectedWindowId }: Win
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-red-600 py-4">
+          <div className="text-red-600">
             <p>Error loading windows: {error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (windows.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CalendarDays className="h-5 w-5" />
+            <span>Shift Window</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            <CalendarDays className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">No Shift Windows</p>
+            <p className="text-sm">No shift windows are available yet. Contact your administrator to create shift windows.</p>
           </div>
         </CardContent>
       </Card>
@@ -123,7 +150,7 @@ export default function WindowSelector({ onWindowChange, selectedWindowId }: Win
         <div>
           <label className="text-sm font-medium mb-2 block">Select Bidding Window</label>
           <Select
-            value={selectedWindowId.toString()}
+            value={selectedWindowId?.toString() || ''}
             onValueChange={(value) => onWindowChange(parseInt(value))}
           >
             <SelectTrigger>

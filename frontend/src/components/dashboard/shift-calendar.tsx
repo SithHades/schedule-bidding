@@ -20,10 +20,10 @@ interface Shift {
 }
 
 interface ShiftCalendarProps {
-  activeWindowId?: number
+  activeWindowId?: number | null
 }
 
-export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps) {
+export default function ShiftCalendar({ activeWindowId = null }: ShiftCalendarProps) {
   const { data: session } = useSession()
   const [shifts, setShifts] = useState<Shift[]>([])
   const [pinnedCount, setPinnedCount] = useState(0)
@@ -36,20 +36,29 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
   const estimatedQuota = Math.round((session?.user.contractPercentage || 100) / 100 * 5) // 5 days per week
 
   const fetchShifts = useCallback(async () => {
-    if (!session?.user.id) return
+    if (!session?.user.id || !activeWindowId) return
     
     try {
-      const data = await executeWithAuth(`/shifts?windowId=${activeWindowId}`, {}, {
+      const response = await executeWithAuth(`/shifts?windowId=${activeWindowId}`, {}, {
         showErrorToast: true,
-        onSuccess: (data) => {
-          setShifts(data)
+        onSuccess: (response) => {
+          // Backend returns { message, shifts, shiftWindow, count }
+          const shifts = response.shifts || []
+          setShifts(shifts)
           // Count pinned shifts
-          const pinned = data.filter((shift: Shift) => shift.isPinnedByUser).length
+          const pinned = shifts.filter((shift: Shift) => shift.isPinnedByUser).length
           setPinnedCount(pinned)
+        },
+        onError: (error) => {
+          // If shift window not found, just show empty state
+          setShifts([])
+          setPinnedCount(0)
         }
       })
     } catch (err) {
       // Error handling is done by the hook
+      setShifts([])
+      setPinnedCount(0)
     }
   }, [activeWindowId, executeWithAuth, session?.user.id])
 
@@ -68,6 +77,9 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
   }
 
   const getShiftForDayAndType = (dayIndex: number, type: "early" | "late") => {
+    // Return null if shifts array is empty or null
+    if (!shifts || shifts.length === 0) return null
+    
     // This is a simplified approach - you might need to adjust based on your actual date format
     return shifts.find(shift => {
       const shiftDate = new Date(shift.date)
@@ -76,6 +88,27 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1
       return adjustedDay === dayIndex && shift.type === type
     })
+  }
+
+  // Show message when no window is selected
+  if (!activeWindowId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5" />
+            <span>Shift Calendar</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12 text-gray-500">
+            <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">No Window Selected</p>
+            <p className="text-sm">Please select a shift window to view available shifts.</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
@@ -108,9 +141,27 @@ export default function ShiftCalendar({ activeWindowId = 1 }: ShiftCalendarProps
         <CardContent>
           <div className="text-center text-red-600 py-8">
             <p>Error loading shifts: {error}</p>
-            <Button onClick={fetchShifts} className="mt-4">
-              Try Again
-            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show empty state when no shifts are available
+  if (!loading && shifts.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5" />
+            <span>Shift Calendar</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12 text-gray-500">
+            <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">No Shifts Available</p>
+            <p className="text-sm">No shifts have been created for this window yet. Contact your administrator to add shifts.</p>
           </div>
         </CardContent>
       </Card>

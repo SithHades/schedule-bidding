@@ -22,7 +22,7 @@ const getShiftsByWindow = async (req, res) => {
       });
     }
 
-    // Get all shifts in the window
+    // Get all shifts in the window with user's pin status
     const shifts = await prisma.shift.findMany({
       where: { shiftWindowId: windowId },
       include: {
@@ -33,6 +33,10 @@ const getShiftsByWindow = async (req, res) => {
             startDate: true,
             endDate: true,
           }
+        },
+        pins: {
+          where: { userId: req.user.id },
+          select: { id: true }
         },
         _count: {
           select: {
@@ -46,16 +50,23 @@ const getShiftsByWindow = async (req, res) => {
       ]
     });
 
+    // Add isPinnedByUser flag to each shift
+    const shiftsWithPinStatus = shifts.map(shift => ({
+      ...shift,
+      isPinnedByUser: shift.pins.length > 0,
+      pins: undefined // Remove pins array from response for cleaner data
+    }));
+
     res.json({
       message: 'Shifts retrieved successfully',
-      shifts,
+      shifts: shiftsWithPinStatus,
       shiftWindow: {
         id: shiftWindow.id,
         name: shiftWindow.name,
         startDate: shiftWindow.startDate,
         endDate: shiftWindow.endDate,
       },
-      count: shifts.length,
+      count: shiftsWithPinStatus.length,
     });
   } catch (error) {
     console.error('Get shifts error:', error);

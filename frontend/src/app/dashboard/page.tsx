@@ -11,7 +11,7 @@ import { User, Calendar, TrendingUp } from "lucide-react"
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
-  const [selectedWindowId, setSelectedWindowId] = useState(1)
+  const [selectedWindowId, setSelectedWindowId] = useState<number | null>(null)
 
   const handleWindowChange = (windowId: number) => {
     setSelectedWindowId(windowId)

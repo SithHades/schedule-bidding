@@ -14,8 +14,19 @@ export async function api(path: string, options: RequestInit = {}) {
   })
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => 'Unknown error')
-    throw new Error(`API error: ${res.status} - ${errorText}`)
+    let errorMessage = `API error: ${res.status}`
+    try {
+      const errorResponse = await res.text()
+      const parsedError = JSON.parse(errorResponse)
+      if (parsedError.error) {
+        errorMessage = parsedError.error
+      } else {
+        errorMessage += ` - ${errorResponse}`
+      }
+    } catch {
+      errorMessage += ` - ${res.statusText}`
+    }
+    throw new Error(errorMessage)
   }
 
   return res.json()
