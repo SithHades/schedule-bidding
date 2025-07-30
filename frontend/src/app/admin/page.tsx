@@ -94,13 +94,13 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-blue-700 mb-4">
-                Create invite links for new users to join the system
+                Create and manage invite links for new users to join the system
               </p>
               <Button 
                 onClick={() => router.push("/admin/invite")}
                 className="w-full"
               >
-                Create Invite
+                Manage Invites
               </Button>
             </CardContent>
           </Card>

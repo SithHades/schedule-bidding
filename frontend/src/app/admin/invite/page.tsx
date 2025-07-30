@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useApi } from "@/hooks/use-api"
 import { apiWithAuth } from "@/lib/api"
 import AuthGuard from "@/components/auth/auth-guard"
+import InviteManagement from "@/components/admin/invite-management"
 import toast from "react-hot-toast"
 
 interface InviteResponse {
@@ -84,8 +85,16 @@ export default function AdminInvitePage() {
   return (
     <AuthGuard requiredRole="admin">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card>
+        <div className="space-y-8">
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">User Invitations</h1>
+            <p className="text-gray-600 mt-2">Create and manage user invite codes for your system</p>
+          </div>
+          
+          {/* Create Invite Form */}
+          <div className="max-w-2xl">
+            <Card>
             <CardHeader>
               <CardTitle>Create User Invite</CardTitle>
               <CardDescription>
@@ -166,7 +175,13 @@ export default function AdminInvitePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Invite Management */}
+        <div>
+          <InviteManagement />
+        </div>
       </div>
+    </div>
     </AuthGuard>
   )
 } 
