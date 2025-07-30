@@ -60,7 +60,7 @@ export default function UserManagement() {
 
   const saveUser = async (userId: number) => {
     try {
-      await updateUser(userId, {
+      await updateUser(userId.toString(), {
         role: editForm.role,
         contractPercentage: parseInt(editForm.contractPercentage)
       })
