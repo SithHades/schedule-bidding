@@ -24,13 +24,13 @@ const handler = NextAuth({
             }),
           })
           
-          if (user && user.id) {
+          if (user && user.user && user.user.id) {
             return {
-              id: user.id.toString(),
-              email: user.email,
-              name: user.name,
-              role: user.role,
-              contractPercentage: user.contractPercentage
+              id: user.user.id.toString(),
+              email: user.user.email,
+              name: user.user.name,
+              role: user.user.role,
+              contractPercentage: user.user.contractPercentage
             }
           }
           
