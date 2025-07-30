@@ -77,4 +77,17 @@ model Pin {
 
   @@id([userId, shiftId])
   @@map("pins")
+}
+
+model InviteToken {
+  id              String   @id @default(cuid())
+  email           String
+  token           String   @unique @default(cuid())
+  contractPercent Int
+  role            Role     @default(USER)
+  used            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  usedAt          DateTime?
+
+  @@map("invite_tokens")
 } 

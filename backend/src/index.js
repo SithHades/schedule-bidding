@@ -11,6 +11,7 @@ const shiftRoutes = require('./routes/shiftRoutes');
 const shiftWindowRoutes = require('./routes/shiftWindowRoutes');
 const pinRoutes = require('./routes/pinRoutes');
 const statsRoutes = require('./routes/statsRoutes');
+const inviteRoutes = require('./routes/inviteRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,6 +54,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/shift-windows', shiftWindowRoutes);
 app.use('/api/pins', pinRoutes);
+app.use('/api/invites', inviteRoutes);
 app.use('/api', statsRoutes);
 
 // 404 handler

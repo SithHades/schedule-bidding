@@ -66,15 +66,15 @@ export function useAuthenticatedApi() {
     options: RequestInit = {},
     apiOptions: UseApiOptions = {}
   ) => {
-    if (!session?.user.id) {
+    if (!session?.user.accessToken) {
       throw new Error("User not authenticated")
     }
 
     return execute(
-      () => apiWithAuth(path, session.user.id, options),
+      () => apiWithAuth(path, session.user.accessToken, options),
       apiOptions
     )
-  }, [session?.user.id, execute])
+  }, [session?.user.accessToken, execute])
 
   return { executeWithAuth, loading, error }
 }

@@ -16,7 +16,7 @@ const handler = NextAuth({
         }
 
         try {
-          const user = await api("/api/auth/login", {
+          const response = await api("/auth/login", {
             method: "POST",
             body: JSON.stringify({
               email: credentials.email,
@@ -24,13 +24,14 @@ const handler = NextAuth({
             }),
           })
           
-          if (user && user.user && user.user.id) {
+          if (response && response.user && response.user.id) {
             return {
-              id: user.user.id.toString(),
-              email: user.user.email,
-              name: user.user.name,
-              role: user.user.role,
-              contractPercentage: user.user.contractPercentage
+              id: response.user.id.toString(),
+              email: response.user.email,
+              name: response.user.name,
+              role: response.user.role,
+              contractPercentage: response.user.contractPercent,
+              accessToken: response.token
             }
           }
           
@@ -47,6 +48,7 @@ const handler = NextAuth({
       if (user) {
         token.role = user.role
         token.contractPercentage = user.contractPercentage
+        token.accessToken = user.accessToken
       }
       return token
     },
@@ -55,6 +57,7 @@ const handler = NextAuth({
         session.user.id = token.sub || ""
         session.user.role = (token.role as string) || ""
         session.user.contractPercentage = (token.contractPercentage as number) || 0
+        session.user.accessToken = (token.accessToken as string) || ""
       }
       return session
     },

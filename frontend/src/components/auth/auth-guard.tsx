@@ -28,9 +28,9 @@ export default function AuthGuard({
     }
 
     // Authenticated but insufficient role
-    if (requiredRole && session?.user.role !== requiredRole) {
+    if (requiredRole && session?.user.role.toLowerCase() !== requiredRole) {
       // If user is not admin but admin is required, redirect to dashboard
-      if (requiredRole === "admin" && session?.user.role !== "admin") {
+      if (requiredRole === "admin" && session?.user.role.toLowerCase() !== "admin") {
         router.push("/dashboard")
         return
       }
@@ -52,7 +52,7 @@ export default function AuthGuard({
   }
 
   // Don't render children if insufficient role
-  if (requiredRole && session?.user.role !== requiredRole) {
+  if (requiredRole && session?.user.role.toLowerCase() !== requiredRole) {
     return null
   }
 

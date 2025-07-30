@@ -22,11 +22,11 @@ export async function api(path: string, options: RequestInit = {}) {
 }
 
 // Helper for authenticated requests
-export async function apiWithAuth(path: string, userId: string, options: RequestInit = {}) {
+export async function apiWithAuth(path: string, token: string, options: RequestInit = {}) {
   return api(path, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${userId}`,
+      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
   })
